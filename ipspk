@@ -1,0 +1,104 @@
+#!/bin/sh
+
+ipspk_version="0.1"
+
+player="audioplay"
+player_flags=""
+#player="aplay"
+#player_flags="-q"
+wavs_dir="wavs"
+
+
+#
+# Print IPv4 address via ifconfig(8) for the interface provided in $1
+#
+ip_address()
+{
+	local $ip_address $interface
+
+	interface="$1"
+	ip_address=`ifconfig $interface  | \
+	    awk '/inet[^6]/ { sub("addr:", "", $2); print $2 }'`
+	echo -n "$ip_address"
+
+	return 0
+}
+
+
+#
+# Parse and spell the IP address
+#
+# TODO: add IPv6 support
+#
+spell_ip()
+{
+	local $ip_address
+
+	ip_address=$1
+
+	if [ -z $ip_address ]; then
+		return 1
+	fi
+
+	for i in `seq 1 ${#ip_address}`; do
+		c=`echo "$ip_address" | cut -c $i`
+		#
+		# XXX: add a check and print a warning message if the .wav
+		#      file does not exists.
+		$player $player_flags "${wavs_dir}/${c}.wav"
+	done
+	
+	return 0
+}
+
+
+#
+# Print version information and exit
+#
+version()
+{
+	echo "$0-${ipspk_version}"
+	exit 1
+}
+
+#
+# Print usage information and exit
+#
+usage()
+{
+	echo "usage: $0 [-hv] interface"
+	exit 1
+}
+
+
+
+# Parse argument list
+args=`getopt hv $*`
+if [ $? -ne 0 ]; then
+	usage
+fi
+set -- $args
+while [ $# -gt 0 ]; do
+	case "$1" in
+		-h)
+			usage
+			;;
+		-v)
+			version
+			;;
+		--)
+			shift
+			break
+			;;
+	esac
+	shift
+done
+
+if [ $# -ne 1 ]; then
+	usage
+fi
+
+interface="$1"
+
+# Spell the IP address for the given interface
+spell_ip `ip_address $interface`
